@@ -1,6 +1,6 @@
 # ToxScreen Risk Prioritization
 
-ToxScreen is a recruiter-ready machine learning project for early-stage compound safety screening. It predicts whether a small-molecule drug candidate is likely to be toxic or non-toxic using the ClinTox benchmark and turns model outputs into an operational triage recommendation.
+ToxScreen is a machine learning project for early-stage compound safety screening. It predicts whether a small-molecule drug candidate is likely to be toxic or non-toxic using the ClinTox benchmark and turns model outputs into an operational triage recommendation.
 
 ## Core story
 
@@ -235,15 +235,3 @@ This repository demonstrates:
 - reproducible packaging and command-line usability
 - metric selection for imbalanced risk problems
 - translating model scores into business operating decisions
-
-## Suggested GitHub presentation
-
-When you publish this repository, pin it and describe it as:
-
-`Built a reproducible ML pipeline for compound toxicity triage using RDKit fingerprints, logistic regression, random forest, and threshold optimization for safety-sensitive screening.`
-
-## Notes
-
-- This is a portfolio project, not a clinical decision system.
-- The included report brief is written in a professional delivery style to support your paper and presentation work.
-- If RDKit installation fails on your machine, use a fresh virtual environment first and retry the install before changing code.
