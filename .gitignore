@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+.DS_Store
+*.pyc
+outputs/figures/*
+outputs/metrics/*
+data/processed/*
+!outputs/figures/.gitkeep
+!outputs/metrics/.gitkeep
+!data/processed/.gitkeep
