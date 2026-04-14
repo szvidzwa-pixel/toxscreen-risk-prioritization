@@ -1,6 +1,6 @@
 # ToxScreen Risk Prioritization
 
-ToxScreen is a machine learning project for early-stage compound safety screening. It predicts whether a small-molecule drug candidate is likely to be toxic or non-toxic using the ClinTox benchmark and turns model outputs into an operational triage recommendation.
+ToxScreen Risk Prioritization is a machine learning project focused on early-stage compound safety screening. I use the ClinTox benchmark to predict whether a small-molecule drug candidate is likely to be toxic or non-toxic, and I frame the model output as a triage signal for early risk prioritization.
 
 ## Core story
 
@@ -15,7 +15,7 @@ That story drives the technical choices in the project:
 - evaluation emphasizes recall, PR-AUC, confusion matrices, and threshold tradeoffs
 - threshold selection is designed to reduce dangerous misses, where a toxic compound is predicted as safe
 
-Instead of framing this like a classroom submission, the repository is structured like a lightweight data science product handoff:
+I structured the repository like a lightweight data science product handoff:
 
 - reproducible environment
 - clean command-line workflow
@@ -215,23 +215,27 @@ It offers a stronger nonlinear comparison model while remaining easier to explai
 
 In toxicity screening, a false negative means a toxic compound is predicted to be safe. That kind of mistake is more dangerous than a false positive. This repository treats threshold selection as part of the product, not an afterthought.
 
+## Results
+
+- The dataset is highly imbalanced, with `112` toxic compounds out of `1484` total rows, or about `7.55%` of the dataset.
+- Logistic Regression produced the strongest held-out performance in this run, with `ROC-AUC = 0.864`, `PR-AUC = 0.459`, `precision = 0.321`, and `recall = 0.409`.
+- Random Forest achieved slightly higher precision (`0.364`) but substantially lower toxic-class recall (`0.182`), which made it less suitable for a safety-first screening objective.
+- Lowering the Logistic Regression decision threshold from `0.50` to `0.15` increased toxic-class recall from `0.409` to `0.818`.
+- That threshold shift reduced false negatives from `13` to `4`, which is important because false negatives correspond to toxic compounds being predicted as safe.
+- The tradeoff is a larger number of false positives, increasing from `19` at the default threshold to `51` at the recommended safety-first threshold.
+
+See: `outputs/metrics/results_summary.md`
+
 ## How to read the results
 
-When reviewing project outputs, use this order:
+I use this order to review the outputs:
 
 1. `dataset_profile.json` to understand class balance and data quality
 2. `model_comparison.csv` to compare baseline model performance
 3. `threshold_analysis.csv` and `threshold_tradeoffs.png` to inspect the false-negative tradeoff
 4. `results_summary.md` for the final plain-English interpretation
 
-If a reviewer only reads one artifact after the README, it should be `outputs/metrics/results_summary.md`.
+## Notes
 
-## Recruiter-facing framing
-
-This repository demonstrates:
-
-- applied binary classification on real molecular data
-- feature engineering with domain-aware representations
-- reproducible packaging and command-line usability
-- metric selection for imbalanced risk problems
-- translating model scores into business operating decisions
+- This is a portfolio project, not a clinical decision system.
+- The included report brief supports the project paper and presentation materials.
