@@ -210,7 +210,7 @@ This plot shows how decision-threshold changes affect recall, precision, false n
 
 ![Threshold tradeoffs](docs/figures/threshold_tradeoffs.png)
 
-## Post-EDA Model Visualizations
+## Model Evaluation Visualizations
 
 After EDA, the project compares model behavior with confusion matrices and threshold plots so the evaluation is visible instead of only reported in metric tables.
 
