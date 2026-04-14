@@ -38,6 +38,8 @@ def write_results_summary(results: dict) -> None:
         key=lambda item: (item[1]["pr_auc"], item[1]["recall"], item[1]["f1"]),
     )[0]
     best_model = results["models"][best_model_name]
+    best_train = best_model.get("train_metrics", {})
+    best_cv = best_model.get("cross_validation", {})
 
     threshold_policy = results.get("threshold_policy", {})
     recommended = threshold_policy.get("recommended_operating_point", {})
@@ -67,6 +69,18 @@ def write_results_summary(results: dict) -> None:
         "",
     ]
 
+    if best_cv:
+        lines.extend(
+            [
+                "## Cross-validation stability",
+                "",
+                f"- Mean CV recall: {best_cv['recall']['mean']:.3f} +/- {best_cv['recall']['std']:.3f}",
+                f"- Mean CV PR-AUC: {best_cv['pr_auc']['mean']:.3f} +/- {best_cv['pr_auc']['std']:.3f}",
+                f"- Mean CV ROC-AUC: {best_cv['roc_auc']['mean']:.3f} +/- {best_cv['roc_auc']['std']:.3f}",
+                "",
+            ]
+        )
+
     if recommended:
         lines.extend(
             [
@@ -84,8 +98,33 @@ def write_results_summary(results: dict) -> None:
                 "",
                 "The central decision question is not only which model scores highest, but which operating threshold best reduces dangerous misses.",
                 "A false negative means a toxic compound is predicted as safe. This repository treats that error as more costly than an extra false positive review burden.",
+                f"The threshold of {recommended['threshold']:.2f} was selected because it preserved a minimum precision floor while substantially increasing recall, which reduced dangerous misses on the held-out set.",
                 f"For the full tradeoff table, see `{threshold_path}`.",
                 f"For side-by-side model metrics, see `{comparison_path}`.",
+            ]
+        )
+
+    if best_train:
+        lines.extend(
+            [
+                "",
+                "## Overfitting check",
+                "",
+                f"- Training recall: {best_train['recall']:.3f}",
+                f"- Test recall: {best_model['recall']:.3f}",
+                f"- Training PR-AUC: {best_train['pr_auc']:.3f}",
+                f"- Test PR-AUC: {best_model['pr_auc']:.3f}",
+                "- A noticeable train-test gap suggests some overfitting risk, which is expected on a small, imbalanced molecular dataset and should be discussed honestly.",
+            ]
+        )
+
+    if "random_forest_feature_importance_note" in results:
+        lines.extend(
+            [
+                "",
+                "## Feature importance note",
+                "",
+                results["random_forest_feature_importance_note"],
             ]
         )
 
@@ -113,7 +152,7 @@ def run_audit(data_path: str | Path) -> dict:
 def run_training(data_path: str | Path, config_path: str | Path) -> dict:
     """Run the full training pipeline."""
     from .features import featurize_smiles
-    from .modeling import build_models
+    from .modeling import build_models, cross_validate_model, tune_model
 
     ensure_output_dirs()
     config = load_config(config_path)
@@ -148,18 +187,34 @@ def run_training(data_path: str | Path, config_path: str | Path) -> dict:
             "feature_dimensions": int(X.shape[1]),
             "train_rows": int(len(y_train)),
             "test_rows": int(len(y_test)),
+            "preprocessing_notes": (
+                "SMILES strings were converted to fixed-length binary Morgan fingerprints. "
+                "No scaling was applied because the features are already binary indicator vectors."
+            ),
         },
         "models": {},
     }
 
     comparison_rows = []
+    tuning_rows = []
 
     for model_name, model in models.items():
-        model.fit(X_train, y_train)
-        y_pred = model.predict(X_test)
-        y_proba = model.predict_proba(X_test)[:, 1]
+        tuned_model, tuning_summary = tune_model(model_name, model, X_train, y_train, config)
+        tuned_model.fit(X_train, y_train)
+
+        cv_summary = cross_validate_model(tuned_model, X_train, y_train, config)
+
+        y_train_pred = tuned_model.predict(X_train)
+        y_train_proba = tuned_model.predict_proba(X_train)[:, 1]
+        train_metrics = compute_metrics(y_train, y_train_pred, y_train_proba)
+
+        y_pred = tuned_model.predict(X_test)
+        y_proba = tuned_model.predict_proba(X_test)[:, 1]
 
         metrics = compute_metrics(y_test, y_pred, y_proba)
+        metrics["train_metrics"] = train_metrics
+        metrics["cross_validation"] = cv_summary
+        metrics["tuning"] = tuning_summary
         all_metrics["models"][model_name] = metrics
 
         comparison_rows.append(
@@ -170,6 +225,16 @@ def run_training(data_path: str | Path, config_path: str | Path) -> dict:
                 "f1": metrics["f1"],
                 "roc_auc": metrics["roc_auc"],
                 "pr_auc": metrics["pr_auc"],
+                "cv_recall_mean": cv_summary["recall"]["mean"],
+                "cv_pr_auc_mean": cv_summary["pr_auc"]["mean"],
+            }
+        )
+
+        tuning_rows.append(
+            {
+                "model": model_name,
+                "best_params": json.dumps(tuning_summary["best_params"], sort_keys=True),
+                "best_cv_score": tuning_summary["best_score"],
             }
         )
 
@@ -194,11 +259,29 @@ def run_training(data_path: str | Path, config_path: str | Path) -> dict:
                 ),
             }
 
+        if model_name == "random_forest":
+            feature_importances = pd.DataFrame(
+                {
+                    "fingerprint_bit": list(range(X.shape[1])),
+                    "importance": tuned_model.feature_importances_,
+                }
+            ).sort_values(by="importance", ascending=False)
+            feature_importances.head(25).to_csv(
+                METRICS_DIR / "random_forest_top_feature_importances.csv",
+                index=False,
+            )
+            all_metrics["random_forest_feature_importance_note"] = (
+                "Random Forest feature importances are reported at the fingerprint-bit level. "
+                "These scores are useful for model diagnostics, but hashed fingerprint bits are not "
+                "directly human-readable chemical descriptors, so interpretability should be treated cautiously."
+            )
+
     comparison_df = pd.DataFrame(comparison_rows).sort_values(
-        by=["pr_auc", "recall", "f1"],
+        by=["pr_auc", "cv_pr_auc_mean", "recall", "f1"],
         ascending=False,
     )
     comparison_df.to_csv(METRICS_DIR / "model_comparison.csv", index=False)
+    pd.DataFrame(tuning_rows).to_csv(METRICS_DIR / "tuning_summary.csv", index=False)
 
     with open(METRICS_DIR / "dataset_profile.json", "w", encoding="utf-8") as file:
         json.dump(dataset_profile, file, indent=2)

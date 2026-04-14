@@ -1,21 +1,21 @@
 # ToxScreen Risk Prioritization
 
-ToxScreen Risk Prioritization is a machine learning project focused on early-stage compound safety screening. I use the ClinTox benchmark to predict whether a small-molecule drug candidate is likely to be toxic or non-toxic, and I frame the model output as a triage signal for early risk prioritization.
+ToxScreen Risk Prioritization is a supervised machine learning project for early-stage compound safety screening. The system uses molecular structure data from the ClinTox benchmark to predict whether a small-molecule drug candidate is likely to be toxic or non-toxic, with special attention to false negatives in safety-sensitive screening.
 
 ## Core story
 
-This repository is built around one simple story:
+This project is built around one simple story:
 
 **We use molecular structure data to predict clinical toxicity risk early, with special attention to false negatives.**
 
-That story drives the technical choices in the project:
+That story drives the technical choices in the pipeline:
 
 - molecules are represented from SMILES strings and transformed into Morgan fingerprints
 - the target is clinical trial toxicity risk via `CT_TOX`
 - evaluation emphasizes recall, PR-AUC, confusion matrices, and threshold tradeoffs
 - threshold selection is designed to reduce dangerous misses, where a toxic compound is predicted as safe
 
-I structured the repository like a lightweight data science product handoff:
+The repository is organized like a lightweight data science product handoff:
 
 - reproducible environment
 - clean command-line workflow
@@ -62,35 +62,12 @@ The pipeline:
 
 ```text
 toxscreen-risk-prioritization/
-├── configs/
-│   └── defaults.json
-├── data/
-│   ├── processed/
-│   └── raw/
-├── notebooks/
-│   └── 01_dataset_audit.ipynb
-├── outputs/
-│   ├── figures/
-│   └── metrics/
-├── reports/
-│   └── project_brief.md
-├── src/
-│   └── toxscreen/
-│       ├── __init__.py
-│       ├── cli.py
-│       ├── config.py
-│       ├── data.py
-│       ├── evaluation.py
-│       ├── features.py
-│       ├── modeling.py
-│       └── pipeline.py
-├── tests/
-│   ├── test_config.py
-│   └── test_threshold_policy.py
-├── .gitignore
-├── Makefile
-├── main.py
-└── requirements.txt
+├── src/toxscreen/        # training, evaluation, features, CLI
+├── data/raw/            # ClinTox CSV
+├── outputs/             # metrics and generated artifacts
+├── docs/figures/        # tracked visualizations for GitHub
+├── reports/             # project brief and writeup support
+└── main.py              # command-line entrypoint
 ```
 
 ## Quickstart
@@ -146,16 +123,7 @@ The loader normalizes capitalization automatically.
 python main.py audit --data data/raw/clintox.csv
 ```
 
-This generates documented EDA artifacts, including:
-
-- `outputs/metrics/eda_summary.md`
-- `outputs/metrics/ct_tox_counts.csv`
-- `outputs/metrics/ct_tox_normalized.csv`
-- `outputs/metrics/fda_counts.csv`
-- `outputs/metrics/fda_normalized.csv`
-- `outputs/figures/ct_tox_class_distribution.png`
-- `outputs/figures/fda_approved_distribution.png`
-- `outputs/figures/smiles_length_distribution.png`
+This generates the EDA summary, label distributions, data quality checks, and core visualizations used in the writeup.
 
 ### 6. Train the models
 
@@ -179,17 +147,7 @@ After a successful run, the project writes:
 - `outputs/metrics/model_comparison.csv`
 - `outputs/metrics/threshold_analysis.csv`
 - `outputs/metrics/results_summary.md`
-- `outputs/figures/confusion_matrix_logistic_regression.png`
-- `outputs/figures/confusion_matrix_random_forest.png`
-- `outputs/figures/threshold_tradeoffs.png`
-
-The most important output is the written summary, because it makes the project story obvious:
-
-- how many compounds were modeled
-- whether the toxic class is the minority class
-- which model performed best
-- how threshold changes affect false negatives
-- what operating threshold is recommended for a safety-first workflow
+- tracked visualizations in `docs/figures/`
 
 The EDA summary is important before modeling because it documents the class imbalance explicitly. For example, the audit workflow reproduces checks such as:
 
@@ -217,18 +175,56 @@ In toxicity screening, a false negative means a toxic compound is predicted to b
 
 ## Results
 
-- The dataset is highly imbalanced, with `112` toxic compounds out of `1484` total rows, or about `7.55%` of the dataset.
-- Logistic Regression produced the strongest held-out performance in this run, with `ROC-AUC = 0.864`, `PR-AUC = 0.459`, `precision = 0.321`, and `recall = 0.409`.
-- Random Forest achieved slightly higher precision (`0.364`) but substantially lower toxic-class recall (`0.182`), which made it less suitable for a safety-first screening objective.
-- Lowering the Logistic Regression decision threshold from `0.50` to `0.15` increased toxic-class recall from `0.409` to `0.818`.
-- That threshold shift reduced false negatives from `13` to `4`, which is important because false negatives correspond to toxic compounds being predicted as safe.
-- The tradeoff is a larger number of false positives, increasing from `19` at the default threshold to `51` at the recommended safety-first threshold.
+The dataset is highly imbalanced, with toxic compounds representing about `7.55%` of the full sample, which makes recall for the toxic class especially important. In the tuned run, Logistic Regression produced the strongest held-out performance, with `ROC-AUC = 0.882`, `PR-AUC = 0.474`, `precision = 0.361`, and `recall = 0.591`, outperforming the Random Forest baseline on toxic-compound detection.
+
+Threshold tuning materially improved the safety profile of the system. Lowering the Logistic Regression decision threshold from `0.50` to the recommended `0.30` increased toxic-class recall from `0.591` to `0.818` and reduced false negatives from `9` to `4`. The tradeoff was an increase in false positives from `23` to `43`, which reflects the central precision-recall tradeoff in early toxicity screening.
 
 See: `outputs/metrics/results_summary.md`
 
+## EDA Visualizations
+
+The project includes visual EDA artifacts for dataset understanding and data quality review.
+
+### Dataset description and class distribution
+
+- Total rows: `1484`
+- Target endpoint: `CT_TOX`
+- Non-toxic compounds: `1372` (`92.45%`)
+- Toxic compounds: `112` (`7.55%`)
+- Missing values: `0` in `smiles`, `FDA_APPROVED`, and `CT_TOX`
+- Duplicate SMILES: `0`
+
+![ClinTox target distribution](docs/figures/ct_tox_class_distribution.png)
+
+![FDA approval distribution](docs/figures/fda_approved_distribution.png)
+
+### Data quality and molecular string structure
+
+The EDA also checks whether the dataset has missing labels, duplicate molecular strings, and unusually short or long SMILES strings.
+
+![SMILES length distribution](docs/figures/smiles_length_distribution.png)
+
+### Threshold tradeoff visualization
+
+This plot shows how decision-threshold changes affect recall, precision, false negatives, and false positives for a safety-first screening workflow.
+
+![Threshold tradeoffs](docs/figures/threshold_tradeoffs.png)
+
+## Post-EDA Model Visualizations
+
+After EDA, the project compares model behavior with confusion matrices and threshold plots so the evaluation is visible instead of only reported in metric tables.
+
+### Confusion matrices
+
+![Logistic Regression confusion matrix](docs/figures/confusion_matrix_logistic_regression.png)
+
+![Random Forest confusion matrix](docs/figures/confusion_matrix_random_forest.png)
+
+These plots make the class-imbalance problem easier to interpret. The tuned Logistic Regression model identifies more toxic compounds than the Random Forest model on the held-out set, which is why it remains the stronger safety-first baseline in this project.
+
 ## How to read the results
 
-I use this order to review the outputs:
+Recommended reading order:
 
 1. `dataset_profile.json` to understand class balance and data quality
 2. `model_comparison.csv` to compare baseline model performance
