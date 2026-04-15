@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import numpy as np
-from rdkit import Chem, DataStructs
+from rdkit import Chem, DataStructs, RDLogger
 from rdkit.Chem import rdFingerprintGenerator
 
 
 MORGAN_GENERATOR_CACHE: dict[tuple[int, int], object] = {}
+RDLogger.DisableLog("rdApp.*")
 
 
 def get_morgan_generator(radius: int, n_bits: int):

@@ -102,6 +102,22 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+Important: run the project from the virtual environment.
+
+If the wrong Python interpreter is used, the project may fail with an error like `ModuleNotFoundError: No module named 'rdkit'`. That means the script is being run outside `.venv`.
+
+If needed, run the project explicitly with:
+
+```bash
+.venv/bin/python run_end_to_end.py
+```
+
+In VS Code, select the interpreter inside:
+
+```text
+.venv/bin/python
+```
+
 ### 4. Add the dataset
 
 Place the ClinTox CSV here:
@@ -130,7 +146,7 @@ This uses the built-in project paths:
 - `data/raw/clintox.csv`
 - `configs/defaults.json`
 
-It runs the dataset audit, trains both models, writes the output files, and prints a compact summary in the terminal.
+It runs the dataset audit, trains both models, writes the output files, and prints a guided end-to-end walkthrough in the terminal that explains what each step is doing and how to interpret the results.
 
 You can also run:
 
