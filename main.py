@@ -250,7 +250,6 @@ def describe_training(results: dict) -> None:
 
 def describe_outputs() -> None:
     print_section("STEP 5: SAVED ARTIFACTS")
-    print("This run writes recruiter-ready and grader-friendly artifacts to disk:")
     print("- outputs/metrics/eda_summary.md")
     print("- outputs/metrics/model_metrics.json")
     print("- outputs/metrics/model_comparison.csv")

@@ -102,6 +102,12 @@ pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
+Confirm that RDKit installed correctly before running the project:
+
+```bash
+python -c "from rdkit import Chem; print('RDKit installed correctly')"
+```
+
 Important: run the project from the virtual environment.
 
 If the wrong Python interpreter is used, the project may fail with an error like `ModuleNotFoundError: No module named 'rdkit'`. That means the script is being run outside `.venv`.
