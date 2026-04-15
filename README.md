@@ -75,7 +75,7 @@ toxscreen-risk-prioritization/
 ### 1. Clone the repository
 
 ```bash
-git clone <YOUR_REPO_URL>
+git clone https://github.com/szvidzwa-pixel/toxscreen-risk-prioritization
 cd toxscreen-risk-prioritization
 ```
 
@@ -280,3 +280,6 @@ Recommended reading order:
 
 - This is a portfolio project, not a clinical decision system.
 - The included report brief supports the project paper and presentation materials.
+
+## Author
+Shalom Zvidzwa
