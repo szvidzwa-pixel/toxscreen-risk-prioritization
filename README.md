@@ -117,7 +117,30 @@ Expected columns:
 
 The loader normalizes capitalization automatically.
 
-### 5. Audit the dataset
+### 5. Run the project end to end
+
+For the simplest experience, run:
+
+```bash
+python run_end_to_end.py
+```
+
+This uses the built-in project paths:
+
+- `data/raw/clintox.csv`
+- `configs/defaults.json`
+
+It runs the dataset audit, trains both models, writes the output files, and prints a compact summary in the terminal.
+
+You can also run:
+
+```bash
+python main.py
+```
+
+which executes the same default end-to-end workflow.
+
+### 6. Audit the dataset separately
 
 ```bash
 python main.py audit --data data/raw/clintox.csv
@@ -125,13 +148,13 @@ python main.py audit --data data/raw/clintox.csv
 
 This generates the EDA summary, label distributions, data quality checks, and core visualizations used in the writeup.
 
-### 6. Train the models
+### 7. Train the models separately
 
 ```bash
 python main.py train --data data/raw/clintox.csv --config configs/defaults.json
 ```
 
-### 7. Run tests
+### 8. Run tests
 
 ```bash
 pytest
