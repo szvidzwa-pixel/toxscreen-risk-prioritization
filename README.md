@@ -32,6 +32,10 @@ This project focuses on one business question:
 
 **Can we build a binary classifier that helps flag potentially toxic compounds early enough to support safer portfolio triage?**
 
+A more honest version of that question, after looking at the first round of outputs, is:
+
+**Can we catch more toxic compounds early without pretending the model is better than it really is on a highly imbalanced dataset?**
+
 ## What the project does
 
 The pipeline:
@@ -208,15 +212,53 @@ SMILES strings are not directly usable by most classical ML models. Morgan finge
 
 ### Why Logistic Regression
 
-It gives an interpretable, credible baseline and is fast to train on sparse binary features.
+I started with Logistic Regression because it gives an interpretable, credible baseline and is fast to train on sparse binary features. I expected Random Forest to be competitive, or possibly better, because toxicity patterns are rarely perfectly linear. That did not happen here. On this dataset, Random Forest was too conservative on the minority toxic class and missed too many dangerous compounds, so Logistic Regression stayed as the operating model.
 
 ### Why Random Forest
 
-It offers a stronger nonlinear comparison model while remaining easier to explain than a deep learning architecture.
+It offers a stronger nonlinear comparison model while remaining easier to explain than a deep learning architecture. I kept it in the project because I did not want the repository to look like I trained one model, got one answer, and stopped there. The comparison matters because it shows the model choice was earned rather than assumed.
 
 ### Why threshold analysis is central
 
 In toxicity screening, a false negative means a toxic compound is predicted to be safe. That kind of mistake is more dangerous than a false positive. This repository treats threshold selection as part of the product, not an afterthought.
+
+### What looked stronger at first than it really was
+
+The first metric that looked reassuring to me was ROC-AUC. The Logistic Regression model posts a held-out ROC-AUC around `0.882`, which sounds strong on paper. After reviewing the class imbalance more carefully, that number became much less convincing as a headline metric. With only `7.55%` of compounds labeled toxic, ROC-AUC can still look good while minority-class detection is weaker than it needs to be.
+
+That is why the project ultimately leaned on:
+
+- toxic-class recall
+- PR-AUC
+- confusion matrices
+- threshold tradeoffs
+
+instead of using ROC-AUC as the primary selling point.
+
+### Why this is not just a majority-class guesser
+
+A model that predicts every compound as non-toxic would score about `92.45%` accuracy on this dataset and still catch `0` toxic compounds.
+
+At the default `0.50` threshold:
+
+- Logistic Regression catches `13 of 22` toxic compounds on the held-out test set
+- Random Forest catches `4 of 22`
+
+At the recommended `0.30` threshold:
+
+- Logistic Regression catches `18 of 22` toxic compounds
+
+That does not make the model perfect, but it does show it learned signal beyond the majority class.
+
+### What I would test next
+
+Threshold tuning improved the safety profile a lot, but it should not be the only response to imbalance. The next experiments I would run are:
+
+- `class_weight="balanced"` during training
+- SMOTE on the training split only
+- XGBoost with `scale_pos_weight`
+
+The held-out test set should stay naturally imbalanced. If I rebalance the test set, I make the evaluation cleaner on paper but less honest about the environment the model is supposed to support.
 
 ## Results
 
